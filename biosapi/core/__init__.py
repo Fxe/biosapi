@@ -1,1 +1,2 @@
 import biosapi.core.model
+from biosapi.core.bios_database_reaction import BiosDatabaseReaction

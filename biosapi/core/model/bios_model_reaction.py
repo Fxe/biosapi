@@ -12,7 +12,11 @@ class BiosModelReaction():
         cstoichiometry = {}
         if 'bios_stoichiometry' in self.json_data:
             for h in self.json_data['bios_stoichiometry']['l']:
+                if type(h[2]) == str and len(h[2]) == 0:
+                    h[2] = '1'
                 cstoichiometry[(h[0], '?')] = -1 * float(h[2])
             for h in self.json_data['bios_stoichiometry']['r']:
+                if type(h[2]) == str and len(h[2]) == 0:
+                    h[2] = '1'
                 cstoichiometry[(h[0], '?')] = float(h[2])
         return cstoichiometry
