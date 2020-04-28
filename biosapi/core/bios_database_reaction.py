@@ -1,3 +1,20 @@
+import math
+
+def is_number(n):
+    try:
+        float(n)
+    except ValueError:
+        return False
+    return True
+
+def get_coefficient(i):
+    coefficient = None
+    if 'coefficient' in i:
+        coefficient = i['coefficient']
+    elif 'stoichiometry' in i:
+        coefficient = str(i['stoichiometry'])
+    return coefficient
+
 def dict_to_eq_block(d):
     l = []
     lhs = d
@@ -64,6 +81,27 @@ class BiosDatabaseReaction():
             stoich[p] += s[id]
 
         return stoich
+    
+    def get_raw_stoich(self):
+        stoich = {}
+        basic = True
+        for k in self.json_data['left']:
+            coefficient = get_coefficient(self.json_data['left'][k])
+            cpd_id = self.json_data['left'][k]['cpdEntry']
+            if not cpd_id in stoich:
+                stoich[cpd_id] = coefficient
+            else:
+                basic = False
+            basic &= is_number(coefficient)
+        for k in self.json_data['right']:
+            coefficient = get_coefficient(self.json_data['right'][k])
+            cpd_id = self.json_data['right'][k]['cpdEntry']
+            if not cpd_id in stoich:
+                stoich[cpd_id] = coefficient
+            else:
+                basic = False
+            basic &= is_number(coefficient)
+        return stoich, basic
     
     @property
     def lhs(self):

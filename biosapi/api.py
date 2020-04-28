@@ -135,7 +135,7 @@ class BIOS():
         if base_url:
             self.base_url = base_url
         else:
-            self.base_url = 'http://192.168.1.21:8080/biosynth-web-biobase'
+            self.base_url = 'http://192.168.1.15:8080/biosynth-web-biobase'
         self.headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
     
     def get_rxn_database_ids(self, database):
@@ -228,6 +228,12 @@ class BIOS():
         data = resp.json()
         return data
     
+    def get_model_reactions_by_database_id(self, model_id, database, database_id):
+        request_url = '{}/api/model/{}/rxnref/{}/{}'.format(self.base_url, model_id, database, database_id)
+        resp = requests.get(request_url, headers=self.headers)
+        data = resp.json()
+        return data
+    
     def get_model_genes(self, model_id):
         request_url = '{}/api/model/{}/gene'.format(self.base_url, model_id)
         resp = requests.get(request_url, headers=self.headers)
@@ -250,6 +256,10 @@ class BIOS():
         #data['id'] = data['properties']['id']
         return BiosModelReaction(data)
     
+    def add_database_id_to_model_reaction(model_id, rxn_id, database, database_id, user, score):
+        request_url = '{}/api/model/annotation/{}/mrxn/{}/{}/{}'.format(self.base_url, model_id, rxn_id, database, database_id)
+        return request_url
+    
     def get_bios_node_edges(self, node_id):
         request_url = '{}/api/neo4j/data/{}/edges'.format(self.base_url, node_id)
         resp = requests.get(request_url, headers=self.headers)
@@ -261,3 +271,37 @@ class BIOS():
         resp = requests.get(request_url, headers=self.headers)
         data = resp.json()
         return data
+    
+    def get_model_species_annotation(self, model_id):
+        url = "{}/api/model/annotation/{}/spi".format(self.base_url, model_id)
+        resp = requests.get(url, headers=self.headers)
+        if resp.status_code != 200:
+            raise ApiError('GET /api/dsa/cpd/{} {}'.format(database, resp.status_code))
+        res = resp.json()
+        return res
+
+    def get_model_reactions_annotation(self, model_id):
+        url = "{}/api/model/annotation/{}/rxn".format(self.base_url, model_id)
+        resp = requests.get(url, headers=self.headers)
+        if resp.status_code != 200:
+            raise ApiError('GET /api/dsa/cpd/{} {}'.format(database, resp.status_code))
+        res = resp.json()
+        return res
+    
+    def set_annotation_model_species(self, model_id, species_id, database, database_id, user, score):
+        request_url = '{}/api/model/annotation/{}/spi/{}/{}/{}'.format(
+            self.base_url, model_id, species_id, database, database_id)
+        resp = requests.post(request_url, headers=self.headers, json={
+            "user" : str(user),
+            "score" : str(score)
+        })
+        return resp
+
+    def set_annotation_model_reaction(self, model_id, model_reaction_id, database, database_id, user, score):
+        request_url = '{}/api/model/annotation/{}/mrxn/{}/{}/{}'.format(
+            self.base_url, model_id, model_reaction_id, database, database_id)
+        resp = requests.post(request_url, headers=self.headers, json={
+            "user" : str(user),
+            "score" : str(score)
+        })
+        return resp
