@@ -107,29 +107,8 @@ def get_inchi(cpd):
         raise Exception('mismatch keys')
     return inchi, inchikey
     
-class BiosUniversalReaction():
-    
-    def __init__(self, json, api=None):
-        self.json_data=json
-        self.api = api
-        self.database_reactions = None
-        
-    @property
-    def reactions(self):
-        if not self.database_reactions == None:
-            return self.database_reactions
-        
-        ids = set()
-        for m in self.json_data['members']:
-            ids.add(m['id'])
-            
-        if not self.api == None:
-            self.database_reactions = {}
-            for r in self.api.get_reactions(ids):
-                self.database_reactions[r.uid] = r
-        return self.database_reactions
-        
-class BIOS():
+
+class BIOS:
     
     def __init__(self, base_url = None):
         if base_url:
@@ -228,11 +207,16 @@ class BIOS():
         data = resp.json()
         return data
     
-    def get_model_reactions_by_database_id(self, model_id, database, database_id):
-        request_url = '{}/api/model/{}/rxnref/{}/{}'.format(self.base_url, model_id, database, database_id)
-        resp = requests.get(request_url, headers=self.headers)
-        data = resp.json()
-        return data
+    def get_model_reactions_by_database_id(self, model_id, rxn_id, database):
+        url = "{}/api/model/{}/rxnref/{}/{}".format(self.base_url, model_id, database, rxn_id)
+        resp = requests.get(url, headers=self.headers)
+        if resp.status_code != 200:
+            raise ApiError('GET api/model/{}/rxnref/{}/{}'.format(model_id, database, rxn_id, resp.status_code))
+        resp_json = resp.json()
+        res = []
+        for o in resp_json:
+            res.append((BiosModelReaction(o['first']), o['second']))
+        return res
     
     def get_model_genes(self, model_id):
         request_url = '{}/api/model/{}/gene'.format(self.base_url, model_id)
@@ -284,16 +268,30 @@ class BIOS():
         url = "{}/api/model/annotation/{}/rxn".format(self.base_url, model_id)
         resp = requests.get(url, headers=self.headers)
         if resp.status_code != 200:
-            raise ApiError('GET /api/dsa/cpd/{} {}'.format(database, resp.status_code))
+            raise ApiError('GET /api/dsa/cpd/{} {}'.format(model_id, resp.status_code))
         res = resp.json()
         return res
-    
+
+    def get_model_species_subcellular_compartment(self, model_id, spi_ids):
+        url = "{}/api/model/{}/species/scmp".format(self.base_url, model_id)
+        resp = requests.post(url, headers=self.headers, json=spi_ids)
+        if resp.status_code != 200:
+            raise ApiError('GET /api/dsa/cpd/{} {}'.format(resp.status_code))
+        res = resp.json()
+        return res
+
+    def set_annotation_model_compartment(self, model_id, cmp_id, standard_compartment):
+        request_url = '{}/api/model/annotation/{}/cmp/{}/{}'.format(
+            self.base_url, model_id, cmp_id, standard_compartment)
+        resp = requests.put(request_url, headers=self.headers)
+        return resp
+
     def set_annotation_model_species(self, model_id, species_id, database, database_id, user, score):
         request_url = '{}/api/model/annotation/{}/spi/{}/{}/{}'.format(
             self.base_url, model_id, species_id, database, database_id)
         resp = requests.post(request_url, headers=self.headers, json={
-            "user" : str(user),
-            "score" : str(score)
+            "user": str(user),
+            "score": str(score)
         })
         return resp
 
@@ -305,3 +303,10 @@ class BIOS():
             "score" : str(score)
         })
         return resp
+
+    def delete_annotation_model_species(self, model_id, species_id, database, database_id):
+        request_url = '{}/api/model/annotation/{}/spi/{}/{}/{}'.format(
+            self.base_url, model_id, species_id, database, database_id)
+        resp = requests.delete(request_url, headers=self.headers)
+        return resp
+

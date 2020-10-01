@@ -1,4 +1,6 @@
 from enum import Enum
+
+
 class SubcellularCompartment(Enum):
     
     ANY = 'z'
@@ -36,3 +38,16 @@ class SubcellularCompartment(Enum):
  # 
  # CELL_WALL,
  # PLASTID,
+
+
+scmp_m = {
+    'c': SubcellularCompartment.CYTOSOL,
+    'm': SubcellularCompartment.MITOCHONDRIA,
+    'e': SubcellularCompartment.EXTRACELLULAR,
+    'x': SubcellularCompartment.PEROXISOME,
+    'v': SubcellularCompartment.VACUOLE,
+    'r': SubcellularCompartment.RETICULUM,
+    'n': SubcellularCompartment.NUCLEUS,
+    'g': SubcellularCompartment.GOLGI,
+    'b': SubcellularCompartment.BOUNDARY,
+}

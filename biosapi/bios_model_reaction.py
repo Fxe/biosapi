@@ -1,3 +1,5 @@
+
+
 class BiosModelReaction:
     
     def __init__(self, data):
@@ -27,4 +29,14 @@ class BiosModelReaction:
             s[o[0]] = -1 * self.decode_stoich_value(o[2])
         for o in self.data['bios_stoichiometry']['r']:
             s[o[0]] = self.decode_stoich_value(o[2])
+        return s
+
+    def get_cstoichiometry(self, metabolites):
+        s = {}
+        for o in self.data['bios_stoichiometry']['l']:
+            if o[0] in metabolites:
+                s[(o[0], metabolites[o[0]]['compartment'])] = -1 * self.decode_stoich_value(o[2])
+        for o in self.data['bios_stoichiometry']['r']:
+            if o[0] in metabolites:
+                s[(o[0], metabolites[o[0]]['compartment'])] = self.decode_stoich_value(o[2])
         return s
