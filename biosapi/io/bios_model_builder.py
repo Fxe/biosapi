@@ -1,24 +1,42 @@
-import logging, json
+import logging
+import json
+from biosapi.databases import map_to_identifiers_org_compound, map_to_identifiers_org_reaction
+from biosapi.bios_model_mapper import BiosModelMapper
 from cobra import Metabolite, Reaction, Model
 
 logger = logging.getLogger(__name__)
 
+SBO_ANNOTATION = 'sbo'
+
 
 class BiosModelToCobraBuilder:
     
-    def __init__(self, model_cmps, model_spis, model_rxns, model_genes):
+    def __init__(self, model_cmps, model_spis, model_rxns, model_genes, model_rxn_mapping):
         self.model_cmps = model_cmps
         self.model_spis = model_spis
         self.model_rxns = model_rxns
         self.model_genes = model_genes
+        self.model_rxn_mapping = model_rxn_mapping
 
     @staticmethod
-    def from_api(model_id, api):
+    def from_api(model_id, api, min_rxn_annotation_score=3):
+        mm = BiosModelMapper(api, model_id)
         model_cmps = api.get_model_compartments(model_id)
         model_spis = api.get_model_species(model_id)
         model_rxns = api.get_model_reactions(model_id)
         model_genes = api.get_model_genes(model_id)
-        return BiosModelToCobraBuilder(model_cmps, model_spis, model_rxns, model_genes)
+        model_rxn_mapping = {}
+        for bios_database_id in ['ModelSeedReaction', 'MetaCyc', 'LigandReaction', 'BiGGReaction']:
+            database_id = map_to_identifiers_org_reaction(bios_database_id)
+            o = mm.get_rxn_annotation(bios_database_id, min_rxn_annotation_score)
+            for model_rxn_id in o:
+                if model_rxn_id not in model_rxn_mapping:
+                    model_rxn_mapping[model_rxn_id] = {}
+                if database_id not in model_rxn_mapping[model_rxn_id]:
+                    model_rxn_mapping[model_rxn_id][database_id] = []
+                model_rxn_mapping[model_rxn_id][database_id].append(o[model_rxn_id])
+
+        return BiosModelToCobraBuilder(model_cmps, model_spis, model_rxns, model_genes, model_rxn_mapping)
 
     def convert_modelcompound(self, m):
         mc_id = m['id'] if 'id' in m else "bios_{}".format(m['bios_id'])
@@ -26,7 +44,16 @@ class BiosModelToCobraBuilder:
         formula = m['chemicalFormula'] if 'chemicalFormula' in m else ''
         #charge = get_int('charge', 0, metabolite.data)
         #mc_id = metabolite.id
-        #annotation = {}
+        annotation = {}
+        if 'bios_references' in m:
+            for o in m['bios_references']:
+                compound_id, bios_database = o
+                database_id = map_to_identifiers_org_compound(bios_database)
+                if database_id is not None:
+                    if database_id not in annotation:
+                        annotation[database_id] = []
+                    annotation[database_id].append(compound_id)
+
         #if 'dblinks' in metabolite.data:
         #    annotation = get_cpd_annotation(metabolite.data['dblinks'])
         compartment = m['compartment']
@@ -37,10 +64,11 @@ class BiosModelToCobraBuilder:
                          name=name, 
                          charge=0, 
                          compartment=compartment)
-        #met.annotation[SBO_ANNOTATION] = "SBO:0000247" #simple chemical - Simple, non-repetitive chemical entity.
+        met.annotation.update(annotation)
+        met.annotation[SBO_ANNOTATION] = "SBO:0000247" #simple chemical - Simple, non-repetitive chemical entity.
         #if id.startswith('cpd'):
         #    met.annotation["seed.compound"] = id.split("_")[0]
-        #met.annotation.update(annotation)
+
         return met
     
     def convert_modelreaction_stoichiometry(self, reaction):
@@ -78,6 +106,10 @@ class BiosModelToCobraBuilder:
                                   upper_bound=upper_bound)
 
         cobra_reaction.add_metabolites(self.convert_modelreaction_stoichiometry(r))
+        annotation = {}
+        if cobra_reaction.id in self.model_rxn_mapping:
+            annotation.update(self.model_rxn_mapping[cobra_reaction.id])
+        cobra_reaction.annotation.update(annotation)
 
         #gpr = get_gpr(mr)
         #gpr_string = get_gpr_string(gpr)
