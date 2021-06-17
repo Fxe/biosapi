@@ -11,12 +11,25 @@ SBO_ANNOTATION = 'sbo'
 
 class BiosModelToCobraBuilder:
     
-    def __init__(self, model_cmps, model_spis, model_rxns, model_genes, model_rxn_mapping):
+    def __init__(self, model_cmps, model_spis, model_rxns, model_genes,
+                 model_rxn_mapping=None, model_spi_mapping=None,
+                 model_spi_rename=None, model_rxn_rename=None):
+        self.model_rxn_mapping = model_rxn_mapping
+        self.model_spi_mapping = model_spi_mapping
+        self.model_spi_rename = model_spi_rename
+        self.model_rxn_rename = model_rxn_rename
+        if self.model_spi_mapping is None:
+            self.model_spi_mapping = {}
+        if self.model_rxn_mapping is None:
+            self.model_rxn_mapping = {}
+        if self.model_spi_rename is None:
+            self.model_spi_rename = {}
+        if self.model_rxn_rename is None:
+            self.model_rxn_rename = {}
         self.model_cmps = model_cmps
         self.model_spis = model_spis
         self.model_rxns = model_rxns
         self.model_genes = model_genes
-        self.model_rxn_mapping = model_rxn_mapping
 
     @staticmethod
     def from_api(model_id, api, min_rxn_annotation_score=3):
@@ -40,6 +53,9 @@ class BiosModelToCobraBuilder:
 
     def convert_modelcompound(self, m):
         mc_id = m['id'] if 'id' in m else "bios_{}".format(m['bios_id'])
+        if mc_id in self.model_spi_rename:
+            mc_id = self.model_spi_rename[mc_id]
+
         name = m['name'] if 'name' in m else ""
         formula = m['chemicalFormula'] if 'chemicalFormula' in m else ''
         #charge = get_int('charge', 0, metabolite.data)
@@ -97,6 +113,8 @@ class BiosModelToCobraBuilder:
     
     def convert_modelreaction(self, r):
         mr_id = r['id']
+        if mr_id in self.model_rxn_rename:
+            mr_id = self.model_rxn_rename[mr_id]
         name = r['name'] if 'name' in r else r['id']
         lower_bound, upper_bound = (-10,10)#reaction.get_reaction_constraints()
         id = mr_id
